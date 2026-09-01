@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervision Infrastructure GTO</title>
+    <!-- Utilisation de la police moderne Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f3f4f6;
+            --bg-card: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-light: #e5e7eb;
+            --color-online: #10B981; /* Vert */
+            --color-offline: #EF4444; /* Rouge */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 50px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #111827;
+            letter-spacing: -0.025em;
+        }
+
+        /* Grille responsive */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* Style des cartes */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .node-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: #1f2937;
+        }
+
+        .node-address {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            background: #f9fafb;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #f3f4f6;
+            display: inline-block;
+            font-family: monospace;
+        }
+
+        /* Badges de statut */
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .badge.online {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--color-online);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge.offline {
+            background-color: rgba(239, 68, 68, 0.15);
+            color: var(--color-offline);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Bouton de rafraîchissement */
+        .refresh-btn {
+            margin-top: 50px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        }
+
+        .refresh-btn:hover {
+            background: #2563eb;
+        }
+        
+        .refresh-btn:active {
+            transform: scale(0.97);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Supervision Infrastructure GTO</h1>
+
+    <div class="grid">
+        <!-- Itération sur la liste des services passée par app.py -->
+        {% for service in services %}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="node-name">{{ service.name }}</h2>
+                {% if service.status == 'ONLINE' %}
+                    <span class="badge online">ONLINE</span>
+                {% else %}
+                    <span class="badge offline">OFFLINE</span>
+                {% endif %}
+            </div>
+            <div class="node-address">
+                <strong>Host:</strong> {{ service.host }}<br>
+                <strong>Port:</strong> {{ service.port }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Bouton pour relancer la vérification -->
+    <button class="refresh-btn" onclick="window.location.reload()">Rafraîchir les statuts</button>
+
+</body>
+</html>

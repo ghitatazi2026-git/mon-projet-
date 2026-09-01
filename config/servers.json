@@ -1,0 +1,29 @@
+[
+  {
+    "id": "web-node",
+    "name": "Web / Dashboard Node",
+    "ip": "172.20.118.189",
+    "role": "SOC Command Center",
+    "user": "r2schools",
+    "ssh_port": 22,
+    "key_path": "C:\\Users\\lenovo\\.ssh\\id_rsa"
+  },
+  {
+    "id": "db-node",
+    "name": "Database Node",
+    "ip": "172.20.119.144",
+    "role": "MariaDB Database",
+    "user": "r2schools",
+    "ssh_port": 22,
+    "key_path": "C:\\Users\\lenovo\\.ssh\\id_rsa"
+  },
+  {
+    "id": "app-node",
+    "name": "Application Node",
+    "ip": "172.20.127.3",
+    "role": "Apache Web Server",
+    "user": "r2schools",
+    "ssh_port": 22,
+    "key_path": "C:\\Users\\lenovo\\.ssh\\id_rsa"
+  }
+]

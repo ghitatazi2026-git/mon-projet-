@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Command Center</title>
+    <meta name="description" content="Portail de supervision et de monitoring d'infrastructure IT">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF pour l'export Rapport -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- HEADER -->
+        <header class="soc-header">
+            <div class="header-brand" id="header-brand">
+                <h1 id="brand-logo">SOC</h1>
+            </div>
+            <div class="header-status">
+                <div class="status-global" id="global-status">INFRASTRUCTURE MONITORING</div>
+                
+                <!-- Profil et Rôle Utilisateur Connecté -->
+                <div id="user-profile-badge" class="user-profile-badge">
+                    <span id="user-display-name">Visiteur</span>
+                    <span id="user-role-badge" class="role-badge role-viewer">Viewer (Lecture seule)</span>
+                </div>
+
+                <button class="btn-action" onclick="refreshCurrentTab()">RAFRAÎCHIR</button>
+                <button class="btn-action" onclick="generatePDFReport()">RAPPORT PDF</button>
+                <button id="btn-settings" class="btn-action role-admin-only" onclick="switchTab('settings')">PARAMÈTRES</button>
+                <button id="btn-login" class="btn-primary" onclick="openLoginModal()">CONNEXION</button>
+            </div>
+        </header>
+
+        <!-- NETWORK ERROR BANNER -->
+        <div id="network-error" class="network-error-banner">
+            Erreur de connexion au serveur. Les données affichées peuvent être obsolètes.
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('dashboard')" data-tab="dashboard">Application</button>
+            <button class="nav-tab" onclick="switchTab('nodes')" data-tab="nodes">Gestion des Nœuds</button>
+            <button class="nav-tab" onclick="switchTab('logs')" data-tab="logs">Journaux / Logs</button>
+            <button class="nav-tab" onclick="switchTab('settings')" data-tab="settings">Paramètres</button>
+        </nav>
+
+        <div id="main-spinner" class="spinner"></div>
+
+        <!-- ================================================================
+             TAB 1: DASHBOARD
+             ================================================================ -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                
+                <!-- LEFT COLUMN: SERVICES -->
+                <div class="bento-card col-4">
+                    <h2 class="card-title">Statut des Services</h2>
+                    <div class="service-list" id="services-container">
+                        <div class="service-item">
+                            <div class="service-info">
+                                <div class="pulse-led led-active" id="led-apache2"></div>
+                                <div>
+                                    <span class="service-name">Apache2 Web Server</span>
+                                    <span class="service-desc" id="status-text-apache2" style="color: #10B981;">Status: ONLINE</span>
+                                </div>
+                            </div>
+                            <div class="service-actions">
+                                <button class="btn-action" onclick="setServiceState(this, 'apache2', 'start')">ON</button>
+                                <button class="btn-action" onclick="setServiceState(this, 'apache2', 'stop')">OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="service-item">
+                            <div class="service-info">
+                                <div class="pulse-led led-active" id="led-mariadb"></div>
+                                <div>
+                                    <span class="service-name">MariaDB Server</span>
+                                    <span class="service-desc" id="status-text-mariadb" style="color: #10B981;">Status: ONLINE</span>
+                                </div>
+                            </div>
+                            <div class="service-actions">
+                                <button class="btn-action" onclick="setServiceState(this, 'mariadb', 'start')">ON</button>
+                                <button class="btn-action" onclick="setServiceState(this, 'mariadb', 'stop')">OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="service-item">
+                            <div class="service-info">
+                                <div class="pulse-led led-active" id="led-cron"></div>
+                                <div>
+                                    <span class="service-name">Cron Scheduler</span>
+                                    <span class="service-desc" id="status-text-cron" style="color: #10B981;">Status: ONLINE</span>
+                                </div>
+                            </div>
+                            <div class="service-actions">
+                                <button class="btn-action" onclick="setServiceState(this, 'cron', 'start')">ON</button>
+                                <button class="btn-action" onclick="setServiceState(this, 'cron', 'stop')">OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="service-item">
+                            <div class="service-info">
+                                <div class="pulse-led led-active" id="led-sauvegarde"></div>
+                                <div>
+                                    <span class="service-name">Rsync Backup</span>
+                                    <span class="service-desc" id="status-text-sauvegarde" style="color: #10B981;">Status: ONLINE</span>
+                                </div>
+                            </div>
+                            <div class="service-actions">
+                                <button class="btn-action" onclick="setServiceState(this, 'sauvegarde', 'start')">ON</button>
+                                <button class="btn-action" onclick="setServiceState(this, 'sauvegarde', 'stop')">OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="service-item" style="margin-top: 15px;">
+                            <div class="service-info">
+                                <div>
+                                    <span class="service-name">Script Remédiation</span>
+                                    <span class="service-desc">Exécutions totales : <span id="script-count">0</span></span>
+                                </div>
+                            </div>
+                            <div class="service-actions" style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 11px;">Répétitions:</span>
+                                <input type="number" id="script-repeat-count" value="1" min="1" max="10" style="width: 40px; text-align: center; border: 1px solid var(--cgi-border);">
+                                <button class="btn-primary" onclick="executeCustomScript(this)">GO</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: PERFORMANCE -->
+                <div class="bento-card col-8">
+                    <h2 class="card-title">Performances Serveurs (Moyenne VMs)</h2>
+                    
+                    <div class="hardware-gauges" style="margin-bottom: 30px;">
+                        <div class="gauge-widget">
+                            <div class="circular-gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="gauge-track" cx="50" cy="50" r="40"></circle>
+                                    <circle id="cpu-gauge-fill" class="gauge-progress" cx="50" cy="50" r="40" style="stroke-dasharray: 251.2; stroke-dashoffset: 251.2; stroke: var(--cgi-purple);"></circle>
+                                </svg>
+                                <div class="gauge-content">
+                                    <span id="cpu-val" class="gauge-val">0%</span>
+                                </div>
+                            </div>
+                            <div class="gauge-name">CPU</div>
+                        </div>
+                        
+                        <div class="gauge-widget">
+                            <div class="circular-gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="gauge-track" cx="50" cy="50" r="40"></circle>
+                                    <circle id="ram-gauge-fill" class="gauge-progress" cx="50" cy="50" r="40" style="stroke-dasharray: 251.2; stroke-dashoffset: 251.2; stroke: var(--cgi-dark);"></circle>
+                                </svg>
+                                <div class="gauge-content">
+                                    <span id="ram-val" class="gauge-val">0%</span>
+                                </div>
+                            </div>
+                            <div class="gauge-name">RAM</div>
+                        </div>
+                        
+                        <div class="gauge-widget">
+                            <div class="circular-gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="gauge-track" cx="50" cy="50" r="40"></circle>
+                                    <circle id="disk-gauge-fill" class="gauge-progress" cx="50" cy="50" r="40" style="stroke-dasharray: 251.2; stroke-dashoffset: 251.2; stroke: var(--cgi-grey);"></circle>
+                                </svg>
+                                <div class="gauge-content">
+                                    <span id="disk-val" class="gauge-val">0%</span>
+                                </div>
+                            </div>
+                            <div class="gauge-name">DISK</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" style="margin-bottom: 10px; height: 260px;">
+                        <canvas id="kaliPerformanceChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 2: GESTION DES NŒUDS
+             ================================================================ -->
+        <div id="tab-nodes" class="tab-content">
+            <h2 class="card-title" style="color: var(--cgi-dark); border-bottom: none;">Vue Détaillée des Nœuds (Multi-VM)</h2>
+            <div id="servers-container" class="servers-grid">
+                <!-- Les cartes des serveurs seront injectées ici par fetchServersStatus() -->
+            </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 3: JOURNAUX / LOGS
+             ================================================================ -->
+        <div id="tab-logs" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="bento-card col-8">
+                    <h2 class="card-title">Historique d'Audit (Main Courante)</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="soc-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticket ID</th>
+                                    <th>Horodatage</th>
+                                    <th>Service / Serveur</th>
+                                    <th>Statut</th>
+                                    <th>Analyste Assigné</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidents-body">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bento-card col-4">
+                    <h2 class="card-title">Flux Temps Réel (Logs)</h2>
+                    <div id="terminal-feed" class="terminal-container full-height">
+                        <div id="terminal-output">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================
+             TAB 4: PARAMÈTRES (WHITE-LABEL)
+             ================================================================ -->
+        <div id="tab-settings" class="tab-content">
+            <div class="settings-grid">
+                <!-- Card 1 : Identite & Textes -->
+                <div class="settings-card">
+                    <h3>Identite & Textes</h3>
+                    <div class="input-group">
+                        <label for="setting-company-name">Nom de l'entreprise</label>
+                        <input type="text" id="setting-company-name" placeholder="Ex: CGI">
+                    </div>
+                    <div class="input-group">
+                        <label for="setting-dashboard-title">Titre de l'Application</label>
+                        <input type="text" id="setting-dashboard-title" placeholder="Ex: Plateforme de Supervision">
+                    </div>
+                    <div class="input-group">
+                        <label for="setting-logo-text">Texte du Logo (mode texte)</label>
+                        <input type="text" id="setting-logo-text" placeholder="Ex: CGI SecOps">
+                    </div>
+                    <div class="input-group">
+                        <label for="setting-logo-mode">Mode d'affichage du Logo</label>
+                        <select id="setting-logo-mode">
+                            <option value="text">Texte uniquement</option>
+                            <option value="image">Image (logo charge)</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="saveSettings()" style="width: 100%; padding: 10px; margin-top: 8px;">ENREGISTRER</button>
+                </div>
+
+                <!-- Card 2 : Logo Graphique -->
+                <div class="settings-card">
+                    <h3>Logo Graphique</h3>
+                    <div class="logo-preview" id="logo-preview">
+                        <span class="logo-preview-text" id="logo-preview-text">SOC</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="setting-logo-file">Charger un nouveau logo</label>
+                        <input type="file" id="setting-logo-file" accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp">
+                    </div>
+                    <button class="btn-action" onclick="uploadLogo()" style="width: 100%; padding: 10px;">CHARGER LE LOGO</button>
+                    <div id="remove-logo-wrap" style="display:none; margin-top: 10px;">
+                        <button class="btn-danger" onclick="removeLogo()" style="width: 100%; padding: 10px;">SUPPRIMER LE LOGO IMAGE</button>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 11px; color: var(--cgi-grey);">Formats acceptes : PNG, JPG, SVG, GIF, WebP. Taille max : 2 Mo.</p>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- MODAL LOGIN SECURISEE (RBAC, MFA & RATE LIMITING) -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 440px;">
+            <h2 class="modal-title" style="margin-bottom: 6px;">Authentification Sécurisée</h2>
+            <p style="font-size: 12px; color: var(--cgi-grey); margin-bottom: 14px;">
+                Contrôle d'accès réglementé selon votre niveau de privilège SOC / SecOps.
+            </p>
+
+            <div id="login-alert-msg" style="display: none; padding: 10px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 14px; line-height: 1.4;"></div>
+
+            <div class="input-group">
+                <label for="username">Identifiant de connexion</label>
+                <input type="text" id="username" placeholder="Nom d'utilisateur ou identifiant SOC" autocomplete="username" />
+            </div>
+            <div class="input-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" placeholder="Mot de passe sécurisé" autocomplete="current-password" />
+            </div>
+
+            <!-- CHAMP 2FA / MFA (Pour rôle Admin SecOps) -->
+            <div id="mfa-group" class="input-group" style="display: none; background: #F8FAFC; padding: 12px; border-radius: 6px; border: 1px solid #CBD5E1; margin-top: 10px;">
+                <label for="otp-code" style="color: var(--cgi-dark); font-weight: 700;">Code OTP / 2FA (Administrateur SecOps)</label>
+                <input type="text" id="otp-code" placeholder="Code à 6 chiffres" maxlength="6" style="letter-spacing: 4px; font-weight: 800; font-size: 14px; text-align: center;" />
+                <span style="font-size: 11px; color: var(--cgi-grey); margin-top: 4px; display: block;">Requis pour valider les privilèges d'administration SecOps.</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;">
+                <button class="btn-action" onclick="closeLoginModal()">Annuler</button>
+                <button id="btn-submit-login" class="btn-primary" onclick="submitLogin()">Se Connecter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ALERTE CRITIQUE (pop-up automatique avant le nettoyage) -->
+    <div id="alert-critical-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 520px; border-top: 4px solid #EF4444;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #FEE2E2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div>
+                    <h2 class="modal-title" style="margin: 0; font-size: 17px;">Seuil Critique Atteint</h2>
+                    <p id="alert-critical-subtitle" style="margin: 2px 0 0 0; font-size: 12px; color: var(--cgi-grey);">Intervention recommandée</p>
+                </div>
+            </div>
+            <div id="alert-critical-body" style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; padding: 14px; margin-bottom: 16px; font-size: 13px; color: #991B1B; line-height: 1.6;">
+                <!-- Contenu injecté par JS -->
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-action" onclick="closeAlertCriticalModal()">Ignorer</button>
+                <button id="btn-alert-critical-action" class="btn-primary" style="background: #EF4444; border-color: #EF4444;" onclick="handleAlertCriticalAction()">Intervenir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CLEANUP EN 3 ÉTAPES (AVANT / PENDANT / APRÈS) -->
+    <div id="cleanup-modal" class="modal-overlay">
+        <div class="modal-content modal-wide">
+            
+            <!-- STEPPER INDICATEUR DE PROGRESSION (AVANT / PENDANT / APRÈS) -->
+            <div class="cleanup-stepper">
+                <div class="step-item active" id="step-badge-1">
+                    <span class="step-num">1</span>
+                    <span class="step-label">Alerte & Diagnostic</span>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step-item" id="step-badge-2">
+                    <span class="step-num">2</span>
+                    <span class="step-label">Sélection & Traitement</span>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step-item" id="step-badge-3">
+                    <span class="step-num">3</span>
+                    <span class="step-label">Bilan d'Optimisation</span>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 ÉTAPE 1 : AVANT (ALERTE & DIAGNOSTIC PRÉALABLE)
+                 ============================================================ -->
+            <div id="cleanup-step-1" class="cleanup-step-container">
+                <h2 id="cleanup-title-step1" class="modal-title" style="margin-bottom: 8px;">Alerte & Diagnostic Préalable</h2>
+                <p id="cleanup-desc-step1" style="margin-bottom: 16px; font-size: 13px; color: var(--cgi-grey);">
+                    Analyse préventive de la charge système avant toute opération d'assainissement.
+                </p>
+
+                <!-- Sélecteur de Nœud Cible -->
+                <div class="node-select-box" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; background: rgba(0,0,0,0.03); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--cgi-border);">
+                    <label for="cleanup-node-select" style="font-weight: 600; font-size: 13px; color: var(--cgi-dark);">Nœud / Serveur Cible :</label>
+                    <select id="cleanup-node-select" onchange="onCleanupNodeChange()" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 13px; outline: none; background: white; cursor: pointer; color: var(--cgi-dark);">
+                        <option value="">Kali Master (Défaut - 192.168.132.130)</option>
+                        <option value="Web / Dashboard Node">VM Web (172.20.118.189)</option>
+                        <option value="Database Node">VM Database (172.20.119.144)</option>
+                        <option value="Application Node">VM Application (172.20.127.3)</option>
+                    </select>
+                </div>
+
+                <!-- CARTE D'ALERTE DIAGNOSTIQUE -->
+                <div id="step1-alert-box" class="step1-alert-card" style="border: 1px solid #FECACA; background: #FEF2F2; border-left: 5px solid #EF4444; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #FEE2E2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <h3 id="step1-alert-title" style="margin: 0; font-size: 15px; color: #991B1B; font-weight: 700;">Dépassement de Seuil Détecté</h3>
+                                <span id="step1-metric-badge" class="server-status-badge" style="background: #FEE2E2; color: #DC2626; font-size: 13px; font-weight: 700;">88%</span>
+                            </div>
+                            <div id="step1-alert-text" style="font-size: 13px; color: #7F1D1D; line-height: 1.5; margin-bottom: 10px;">
+                                Une consommation anormale de ressources a été identifiée sur cette machine.
+                            </div>
+                            
+                            <!-- JAUGE DE CHARGE AVANT -->
+                            <div style="background: rgba(255,255,255,0.7); border-radius: 4px; padding: 8px 12px; border: 1px solid #FECACA;">
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: #991B1B; margin-bottom: 4px;">
+                                    <span id="step1-gauge-label">Niveau d'utilisation actuel</span>
+                                    <span id="step1-gauge-val">0%</span>
+                                </div>
+                                <div style="height: 8px; background: #E5E7EB; border-radius: 4px; overflow: hidden;">
+                                    <div id="step1-gauge-fill" style="width: 0%; height: 100%; background: #EF4444; border-radius: 4px; transition: width 0.4s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUESTION DOMINANTE D'INTERVENTION (ALERTE) -->
+                <div id="step1-dominant-question-box" style="background: #FFFFFF; border: 2px solid var(--cgi-purple); border-radius: 6px; padding: 16px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(79, 38, 131, 0.08);">
+                    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--cgi-purple); letter-spacing: 0.5px; margin-bottom: 6px;">
+                        Décision d'Intervention Administrateur
+                    </div>
+                    <div id="step1-dominant-question-text" style="font-size: 15px; font-weight: 700; color: var(--cgi-dark); line-height: 1.4; margin-bottom: 8px;">
+                        Souhaitez-vous lancer l'inspection et la remédiation de cette ressource ?
+                    </div>
+                    <div id="step1-dominant-question-sub" style="font-size: 12px; color: var(--cgi-grey); line-height: 1.5;">
+                        L'analyse SSH va cibler précisément les éléments responsables pour vous permettre de valider leur traitement.
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-action" onclick="closeCleanupModal()">Annuler / Ignorer</button>
+                    <button id="btn-proceed-inspection" class="btn-primary" style="background: var(--cgi-purple); border-color: var(--cgi-purple); font-weight: 700; padding: 8px 18px;" onclick="proceedToInspection()">
+                        <span>Oui, lancer l'inspection</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 ÉTAPE 2 : PENDANT (SÉLECTION PAR CASES À COCHER & ACTION)
+                 ============================================================ -->
+            <div id="cleanup-step-2" class="cleanup-step-container" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <h2 id="cleanup-title" class="modal-title" style="margin-bottom: 0;">Nettoyage ciblé</h2>
+                    <span id="step2-node-badge" style="font-size: 12px; font-weight: 600; background: rgba(79, 38, 131, 0.08); color: var(--cgi-purple); padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(79, 38, 131, 0.2);">Kali Master</span>
+                </div>
+                <p id="cleanup-desc" style="margin-bottom: 12px; font-size: 13px; color: var(--cgi-grey);"></p>
+                
+                <div id="cleanup-loading" style="display: none; text-align: center; padding: 30px;">
+                    <div class="spinner active" style="margin: 0 auto 10px auto;"></div>
+                    <p style="font-size: 13px; font-style: italic; color: var(--cgi-grey);">Scan du serveur en cours via SSH...</p>
+                </div>
+                
+                <div id="cleanup-content" style="display: none;">
+                    <!-- Injected by JS (checkboxes for files or processes) -->
+                </div>
+
+                <!-- BARRE DE SYNTHÈSE DE LA SÉLECTION -->
+                <div id="step2-selection-bar" style="display: none; justify-content: space-between; align-items: center; margin-top: 10px; padding: 8px 12px; background: #F1F5F9; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--cgi-dark);">
+                    <span id="step2-selected-count">0 élément(s) sélectionné(s)</span>
+                    <span id="step2-selected-impact" style="color: var(--cgi-purple);">Impact estimé : 0 MB</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: space-between; margin-top: 15px;">
+                    <button class="btn-action" onclick="setCleanupStep(1)">← Retour au diagnostic</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-action" onclick="closeCleanupModal()">Fermer</button>
+                        <button id="btn-cleanup-confirm" class="btn-primary" style="display: none;" onclick="submitCleanup()">Confirmer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 ÉTAPE 3 : APRÈS (POPUP DE BILAN / RAPPORT D'OPTIMISATION)
+                 ============================================================ -->
+            <div id="cleanup-step-3" class="cleanup-step-container" style="display: none;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 56px; height: 56px; border-radius: 50%; background: #D1FAE5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 2px solid #10B981;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <h2 id="step3-title" class="modal-title" style="margin-bottom: 4px; color: #065F46;">Optimisation Terminée avec Succès</h2>
+                    <p id="step3-subtitle" style="font-size: 13px; color: var(--cgi-grey);">Rapport de remédiation et bilan de performance</p>
+                </div>
+
+                <!-- GRILLE DE BILAN (GAINS & STATUT) -->
+                <div class="step3-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+                    <div class="step3-kpi-card" style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #166534; margin-bottom: 4px;">Gain Obtenu</div>
+                        <div id="step3-gain-val" style="font-size: 20px; font-weight: 700; color: #15803D;">+ 120 MB Libérés</div>
+                        <div id="step3-gain-desc" style="font-size: 12px; color: #14532D; margin-top: 4px;">Fichiers purgés du système</div>
+                    </div>
+
+                    <div class="step3-kpi-card" style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 14px;">
+                        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #166534; margin-bottom: 4px;">Nouveau Statut</div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                            <div class="pulse-led led-active" style="width: 12px; height: 12px;"></div>
+                            <span id="step3-status-val" style="font-size: 16px; font-weight: 700; color: #15803D;">Remis au Vert (Nominal)</span>
+                        </div>
+                        <div id="step3-node-name" style="font-size: 12px; color: #14532D; margin-top: 4px;">Serveur : Kali Master</div>
+                    </div>
+                </div>
+
+                <!-- DÉTAILS DES ACTIONS & AUDIT LOG -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 14px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: var(--cgi-dark); margin-bottom: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cgi-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <span>Traçabilité & Conformité SOC</span>
+                    </div>
+                    <ul id="step3-audit-list" style="margin: 0; padding-left: 20px; font-size: 12px; color: var(--cgi-dark); line-height: 1.7;">
+                        <li>Action enregistrée dans le journal <code>audit.log</code>.</li>
+                        <li>Incident clôturé dans la Main Courante.</li>
+                        <li>Metriques de performance rafraichies sur l'Application.</li>
+                    </ul>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-action" onclick="goToAuditLogs()">Consulter les Journaux</button>
+                    <button class="btn-primary" style="background: #10B981; border-color: #10B981;" onclick="closeCleanupModal()">Terminer & Fermer</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- STATUS BAR (FOOTER) -->
+    <div class="status-bar">
+        <div class="status-bar-left">
+            <div class="status-indicator">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-connection-text">Connecté</span>
+            </div>
+            <span id="status-nodes-count">0 nœud(s) en ligne</span>
+        </div>
+        <div class="status-bar-right">
+            <span id="status-last-update">Dernière MAJ : —</span>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
