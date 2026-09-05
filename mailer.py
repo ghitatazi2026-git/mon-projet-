@@ -49,6 +49,21 @@ SMTP_TIMEOUT = 20
 DEFAULT_MACHINE = "Kali Master"
 
 
+def print_email_config_status():
+    """Diagnostic affiche au demarrage : sans mot de passe, aucune alerte ne part."""
+    if not SENDER_PASSWORD:
+        print(
+            "[MAILER] ALERTES DESACTIVEES : EMAIL_PASSWORD absent du .env. "
+            f"Creez un mot de passe d'application Gmail (16 caracteres) pour {SENDER_EMAIL} "
+            "sur https://myaccount.google.com/apppasswords"
+        )
+    else:
+        print(
+            f"[MAILER] Alertes email actives : {SENDER_EMAIL} -> {RECEIVER_EMAIL} "
+            f"via {SMTP_HOST}:{SMTP_PORT}"
+        )
+
+
 def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee, machine):
     """Construit le corps HTML de l'email d'alerte SOC."""
     timestamp = local_now().strftime("%d/%m/%Y %H:%M:%S")

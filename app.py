@@ -213,6 +213,8 @@ with app.app_context():
 # Démarre la boucle SSH avec le contexte de l'application
 threading.Thread(target=kali_ssh.background_monitoring_loop, args=(app,), daemon=True).start()
 
+mailer.print_email_config_status()
+
 
 def resolve_target_machine(service_name, machine=None):
     """Nom de la VM concernee, deduit du service ("Nettoyage Disque (Node 3)")."""
