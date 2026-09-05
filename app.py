@@ -18,7 +18,7 @@ import concurrent.futures
 import paramiko
 import json
 from werkzeug.utils import secure_filename
-from models import db, User, Server, Incident, Alert
+from models import db, User, Server, Incident, Alert, local_now
 
 # Configuration de l'Audit Log (Pilier 4 : Traçabilité)
 audit_logger = logging.getLogger("audit_logger")
@@ -213,8 +213,19 @@ with app.app_context():
 # Démarre la boucle SSH avec le contexte de l'application
 threading.Thread(target=kali_ssh.background_monitoring_loop, args=(app,), daemon=True).start()
 
+mailer.print_email_config_status()
 
-def log_and_notify_incident(service_name, status_message, action_taken):
+
+def resolve_target_machine(service_name, machine=None):
+    """Nom de la VM concernee, deduit du service ("Nettoyage Disque (Node 3)")."""
+    if machine:
+        return machine
+    if "(" in service_name and service_name.rstrip().endswith(")"):
+        return service_name[service_name.rindex("(") + 1:-1].strip()
+    return "Kali Master"
+
+
+def log_and_notify_incident(service_name, status_message, action_taken, machine=None):
     incident = Incident(
         service=service_name,
         status=status_message,
@@ -228,7 +239,14 @@ def log_and_notify_incident(service_name, status_message, action_taken):
     
     email_thread = threading.Thread(
         target=mailer.send_soc_alert_email,
-        args=(incident.id, service_name, status_message, action_taken, incident.assignee)
+        args=(
+            incident.id,
+            service_name,
+            status_message,
+            action_taken,
+            incident.assignee,
+            resolve_target_machine(service_name, machine),
+        )
     )
     email_thread.start()
     
@@ -415,7 +433,7 @@ def login():
     # 4. Connexion Réussie
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.utcnow()
+    user.last_login = local_now()
     db.session.commit()
 
     session.permanent = True
@@ -587,7 +605,8 @@ def api_purge_ram():
         incident = log_and_notify_incident(
             service_name=f"Libération RAM ({target_name})", 
             status_message="Cache RAM purgé", 
-            action_taken=f"Purge des buffers et caches mémoire via SSH par {session.get('full_name')}."
+            action_taken=f"Purge des buffers et caches mémoire via SSH par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({"status": "success", "message": f"Cache RAM purgé avec succès sur {target_name}.", "incident": incident})
     return jsonify({"status": "error", "message": f"Échec de la purge RAM sur {target_name}."}), 500
@@ -630,7 +649,8 @@ def clean_files():
         incident = log_and_notify_incident(
             service_name=f"Nettoyage Disque ({target_name})", 
             status_message=f"{success_count} fichier(s) supprimé(s)", 
-            action_taken=f"Suppression de {success_count} fichier(s) via SSH par {session.get('full_name')}."
+            action_taken=f"Suppression de {success_count} fichier(s) via SSH par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({
             "status": "success", 
@@ -686,7 +706,8 @@ def api_kill_process():
         incident = log_and_notify_incident(
             service_name=f"Optimisation CPU ({target_name})", 
             status_message=f"{killed_count} processus arrêté(s)", 
-            action_taken=f"Arrêt de {killed_count} processus (kill -9) par {session.get('full_name')}."
+            action_taken=f"Arrêt de {killed_count} processus (kill -9) par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({
             "status": "success", 

@@ -1,9 +1,21 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from zoneinfo import ZoneInfo
+import os
 import uuid
 
 db = SQLAlchemy()
+
+# Le serveur tourne en UTC : les horodatages affiches doivent utiliser le
+# fuseau local, configurable via APP_TIMEZONE.
+APP_TIMEZONE = ZoneInfo(os.getenv("APP_TIMEZONE", "Africa/Casablanca"))
+
+
+def local_now():
+    """Heure locale courante, sans fuseau (stockable en base)."""
+    return datetime.now(APP_TIMEZONE).replace(tzinfo=None)
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -64,7 +76,7 @@ class Incident(db.Model):
     service = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(100), nullable=False)
     action = db.Column(db.String(255), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=local_now)
     assignee = db.Column(db.String(100), nullable=False)
 
     def to_dict(self):
@@ -80,10 +92,10 @@ class Incident(db.Model):
 
 class Alert(db.Model):
     __tablename__ = 'alerts'
-    id = db.Column(db.String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = db.Column(db.String(50), primary_key=True, default=lambda: f"#ALT-2026-{str(uuid.uuid4())[:4].upper()}")
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default='Pending') # Pending, Resolved
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=local_now)
 
     def to_dict(self):
         return {

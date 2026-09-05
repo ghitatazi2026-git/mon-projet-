@@ -1,48 +1,33 @@
-import os
-import smtplib
-from email.mime.text import MIMEText
+"""Diagnostic de la configuration d'envoi des alertes SOC.
 
-def load_env_manual():
-    """Charge le .env manuellement sans dependance externe."""
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    key, val = line.split("=", 1)
-                    val = val.strip().strip('"').strip("'")
-                    os.environ[key.strip()] = val
+Usage : python test_email.py
+Utilise exactement la meme configuration que les alertes automatiques (mailer.py).
+"""
+import mailer
 
-def test_gmail_ssl():
-    load_env_manual()
-    sender = os.getenv("EMAIL_SENDER")
-    password = os.getenv("EMAIL_PASSWORD")
-    receiver = os.getenv("EMAIL_RECEIVER")
-    
-    print(f"[*] Expediteur : {sender}")
-    print(f"[*] Destinataire : {receiver}")
-    print(f"[*] Mot de passe (longueur) : {len(password) if password else 0} caracteres")
-    
-    msg = MIMEText("Test de connexion SSL depuis le projet KALI SOC Command Center.")
-    msg['Subject'] = "Test Gmail SSL (Port 465)"
-    msg['From'] = sender
-    msg['To'] = receiver
-    
-    try:
-        print("[*] Connexion a smtp.gmail.com sur le port 465...")
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            print("[*] Authentification...")
-            server.login(sender, password)
-            print("[*] Envoi de l'email...")
-            server.send_message(msg)
-            
-        print("SUCCESS : Email de test envoye avec succes. Configuration SSL OK.")
-    except Exception as e:
-        print(f"ERREUR : Impossible de se connecter ou d'envoyer l'email : {str(e)}")
+
+def main():
+    print(f"[*] Expediteur   : {mailer.SENDER_EMAIL}")
+    print(f"[*] Destinataire : {mailer.RECEIVER_EMAIL}")
+    print(f"[*] Serveur SMTP : {mailer.SMTP_HOST}:{mailer.SMTP_PORT}")
+    print(f"[*] Mot de passe : {len(mailer.SENDER_PASSWORD)} caracteres")
+
+    if len(mailer.SENDER_PASSWORD) != 16:
+        print(
+            "[!] Un mot de passe d'application Gmail fait 16 caracteres. "
+            "Generez-en un sur https://myaccount.google.com/apppasswords"
+        )
+
+    ok = mailer.send_soc_alert_email(
+        ticket_id="TEST-001",
+        service_name="Test SMTP",
+        status_message="Diagnostic de configuration",
+        action_taken="Envoi d'un email de test",
+        assignee="Script de diagnostic",
+    )
+    print("SUCCESS : configuration email operationnelle." if ok else "ECHEC : voir l'erreur ci-dessus.")
+    return 0 if ok else 1
+
 
 if __name__ == "__main__":
-    test_gmail_ssl()
-                                                                                                                            
+    raise SystemExit(main())

@@ -4,6 +4,8 @@ import uuid
 import os
 import base64
 import logging
+import threading
+import mailer
 from models import db, Alert
 
 # Configuration SSH
@@ -14,6 +16,12 @@ LOG_FILE_PATH = "/var/log/monitoring.log"
 
 SSH_TIMEOUT = 2  # Timeout court pour la robustesse (secondes)
 SSH_CMD_TIMEOUT = 2  # Timeout pour les commandes SSH
+
+# Anti-spam des alertes email : delai minimal entre deux emails pour un meme
+# message de journal, et nombre maximal d'emails par cycle de surveillance.
+ALERT_EMAIL_COOLDOWN_SECONDS = 900
+MAX_ALERT_EMAILS_PER_CYCLE = 5
+_alert_email_last_sent = {}
 
 # Logger pour les erreurs SSH
 ssh_logger = logging.getLogger("ssh_logger")
@@ -165,6 +173,7 @@ def fetch_system_metrics_and_alerts(app=None):
         if success and log_output and app:
             with app.app_context():
                 lines = log_output.splitlines()
+                emails_sent = 0
                 for line in lines:
                     if "CRITICAL" in line or "ERROR" in line:
                         msg = line.strip()
@@ -175,11 +184,41 @@ def fetch_system_metrics_and_alerts(app=None):
                             db.session.add(new_alert)
                             db.session.commit()
 
+                            if emails_sent < MAX_ALERT_EMAILS_PER_CYCLE:
+                                if notify_alert_by_email(new_alert.id, msg):
+                                    emails_sent += 1
+
     except Exception as e:
         ssh_logger.error(f"[SSH Error] Erreur récupération métriques : {e}")
         kali_metrics["server_status"] = "Offline"
     finally:
         safe_close(client)
+
+
+def notify_alert_by_email(alert_id, message):
+    """Envoie l'alerte de journal par email, hors du thread de surveillance.
+
+    Retourne False si le meme message a deja ete notifie recemment.
+    """
+    now = time.time()
+    if now - _alert_email_last_sent.get(message, 0) < ALERT_EMAIL_COOLDOWN_SECONDS:
+        return False
+
+    severity = "CRITICAL" if "CRITICAL" in message else "ERROR"
+    _alert_email_last_sent[message] = now
+    threading.Thread(
+        target=mailer.send_soc_alert_email,
+        args=(
+            alert_id,
+            f"Journal systeme ({LOG_FILE_PATH})",
+            severity,
+            message[:500],
+            "Detection automatique",
+            "Kali Master",
+        ),
+        daemon=True,
+    ).start()
+    return True
 
 
 # ==========================================================================
