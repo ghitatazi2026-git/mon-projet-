@@ -204,13 +204,14 @@ def notify_alert_by_email(alert_id, message):
     if now - _alert_email_last_sent.get(message, 0) < ALERT_EMAIL_COOLDOWN_SECONDS:
         return False
 
+    severity = "CRITICAL" if "CRITICAL" in message else "ERROR"
     _alert_email_last_sent[message] = now
     threading.Thread(
         target=mailer.send_soc_alert_email,
         args=(
             alert_id,
-            "Journal Kali",
-            "Nouvelle alerte detectee dans les journaux",
+            f"Journal Kali ({LOG_FILE_PATH})",
+            severity,
             message[:500],
             "Detection automatique",
         ),

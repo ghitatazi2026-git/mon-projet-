@@ -18,7 +18,7 @@ import concurrent.futures
 import paramiko
 import json
 from werkzeug.utils import secure_filename
-from models import db, User, Server, Incident, Alert
+from models import db, User, Server, Incident, Alert, local_now
 
 # Configuration de l'Audit Log (Pilier 4 : Traçabilité)
 audit_logger = logging.getLogger("audit_logger")
@@ -415,7 +415,7 @@ def login():
     # 4. Connexion Réussie
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.utcnow()
+    user.last_login = local_now()
     db.session.commit()
 
     session.permanent = True

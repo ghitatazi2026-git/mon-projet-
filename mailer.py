@@ -3,7 +3,8 @@ import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, formatdate, make_msgid
-from datetime import datetime
+
+from models import local_now
 
 try:
     from dotenv import load_dotenv
@@ -47,7 +48,7 @@ SMTP_TIMEOUT = 20
 
 def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee):
     """Construit le corps HTML de l'email d'alerte SOC."""
-    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    timestamp = local_now().strftime("%d/%m/%Y %H:%M:%S")
     
     html = f"""
     <html>
@@ -75,7 +76,7 @@ def _build_soc_email_body(ticket_id, service_name, status_message, action_taken,
                     <td style="padding: 8px 0; color: #1A1A1A; border-top: 1px solid #F0F0F0;">{status_message}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Action Requise</td>
+                    <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Detail / Action</td>
                     <td style="padding: 8px 0; color: #1A1A1A; border-top: 1px solid #F0F0F0;">{action_taken}</td>
                 </tr>
                 <tr>
@@ -97,7 +98,7 @@ def _build_soc_email_body(ticket_id, service_name, status_message, action_taken,
 
 def _build_soc_email_plain(ticket_id, service_name, status_message, action_taken, assignee):
     """Construit le corps texte brut de l'email d'alerte SOC."""
-    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    timestamp = local_now().strftime("%d/%m/%Y %H:%M:%S")
     
     body = f"""
 === NOTIFICATION SYSTÈME - CGI IT OPERATIONS ===
@@ -106,7 +107,7 @@ Ticket ID     : {ticket_id}
 Horodatage    : {timestamp}
 Service       : {service_name}
 Statut        : {status_message}
-Action        : {action_taken}
+Detail        : {action_taken}
 Intervenant   : {assignee}
 
 ---
