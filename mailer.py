@@ -45,8 +45,8 @@ SMTP_HOST = _clean(os.getenv("SMTP_HOST")) or "smtp.gmail.com"
 SMTP_PORT = int(os.getenv("SMTP_PORT") or 465)
 SMTP_TIMEOUT = 20
 
-# Machine supervisee affichee dans les tickets, surchargeable via KALI_IP.
-DEFAULT_MACHINE = f"Kali Linux ({_clean(os.getenv('KALI_IP')) or '192.168.132.130'})"
+# Machine affichee quand l'appelant ne precise pas le serveur cible.
+DEFAULT_MACHINE = "Kali Master"
 
 
 def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee, machine):
@@ -71,7 +71,7 @@ def _build_soc_email_body(ticket_id, service_name, status_message, action_taken,
                     <td style="padding: 8px 0; color: #1A1A1A; border-top: 1px solid #F0F0F0;">{timestamp}</td>
                 </tr>
                 <tr>
-                    <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Machine / VM</td>
+                    <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Serveur / VM</td>
                     <td style="padding: 8px 0; color: #1A1A1A; font-weight: 600; border-top: 1px solid #F0F0F0;">{machine}</td>
                 </tr>
                 <tr>
@@ -112,7 +112,7 @@ def _build_soc_email_plain(ticket_id, service_name, status_message, action_taken
 
 Ticket ID     : {ticket_id}
 Horodatage    : {timestamp}
-Machine / VM  : {machine}
+Serveur / VM  : {machine}
 Service       : {service_name}
 Statut        : {status_message}
 Detail        : {action_taken}

@@ -214,7 +214,16 @@ with app.app_context():
 threading.Thread(target=kali_ssh.background_monitoring_loop, args=(app,), daemon=True).start()
 
 
-def log_and_notify_incident(service_name, status_message, action_taken):
+def resolve_target_machine(service_name, machine=None):
+    """Nom de la VM concernee, deduit du service ("Nettoyage Disque (Node 3)")."""
+    if machine:
+        return machine
+    if "(" in service_name and service_name.rstrip().endswith(")"):
+        return service_name[service_name.rindex("(") + 1:-1].strip()
+    return "Kali Master"
+
+
+def log_and_notify_incident(service_name, status_message, action_taken, machine=None):
     incident = Incident(
         service=service_name,
         status=status_message,
@@ -234,7 +243,7 @@ def log_and_notify_incident(service_name, status_message, action_taken):
             status_message,
             action_taken,
             incident.assignee,
-            f"Kali Linux ({kali_ssh.KALI_IP})",
+            resolve_target_machine(service_name, machine),
         )
     )
     email_thread.start()
@@ -594,7 +603,8 @@ def api_purge_ram():
         incident = log_and_notify_incident(
             service_name=f"Libération RAM ({target_name})", 
             status_message="Cache RAM purgé", 
-            action_taken=f"Purge des buffers et caches mémoire via SSH par {session.get('full_name')}."
+            action_taken=f"Purge des buffers et caches mémoire via SSH par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({"status": "success", "message": f"Cache RAM purgé avec succès sur {target_name}.", "incident": incident})
     return jsonify({"status": "error", "message": f"Échec de la purge RAM sur {target_name}."}), 500
@@ -637,7 +647,8 @@ def clean_files():
         incident = log_and_notify_incident(
             service_name=f"Nettoyage Disque ({target_name})", 
             status_message=f"{success_count} fichier(s) supprimé(s)", 
-            action_taken=f"Suppression de {success_count} fichier(s) via SSH par {session.get('full_name')}."
+            action_taken=f"Suppression de {success_count} fichier(s) via SSH par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({
             "status": "success", 
@@ -693,7 +704,8 @@ def api_kill_process():
         incident = log_and_notify_incident(
             service_name=f"Optimisation CPU ({target_name})", 
             status_message=f"{killed_count} processus arrêté(s)", 
-            action_taken=f"Arrêt de {killed_count} processus (kill -9) par {session.get('full_name')}."
+            action_taken=f"Arrêt de {killed_count} processus (kill -9) par {session.get('full_name')}.",
+            machine=target_name
         )
         return jsonify({
             "status": "success", 

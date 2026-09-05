@@ -214,7 +214,7 @@ def notify_alert_by_email(alert_id, message):
             severity,
             message[:500],
             "Detection automatique",
-            f"Kali Linux ({KALI_IP})",
+            "Kali Master",
         ),
         daemon=True,
     ).start()
