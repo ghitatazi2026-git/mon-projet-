@@ -1114,15 +1114,11 @@ function setCleanupStep(step) {
             b1.classList.add('active');
         } else if (step === 2) {
             b1.classList.add('completed');
-            if (num1) num1.textContent = '✓';
             b2.classList.add('active');
         } else if (step === 3) {
             b1.classList.add('completed');
             b2.classList.add('completed');
             b3.classList.add('completed', 'active');
-            if (num1) num1.textContent = '✓';
-            if (num2) num2.textContent = '✓';
-            if (num3) num3.textContent = '✓';
         }
     }
 }
