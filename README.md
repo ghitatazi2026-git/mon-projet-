@@ -24,7 +24,7 @@ Tableau de bord de supervision développé en Python (Flask) et JavaScript (Char
 * **Active Defense (Blocage IP)** : détection d'IPs suspectes et bouton "BAN IP" permettant d'exécuter une règle `iptables` sur la machine distante.
 * **Gestion des Services** : boutons interactifs (ON/OFF) pour piloter directement les services critiques de Kali (Apache2, MariaDB, Rsync, Cron) via SSH.
 * **Console de Logs en Direct** : affichage continu des dernières entrées de `/var/log/auth.log`.
-* **Alertes Automatisées** : envoi d'emails automatiques vers `ghita.soc.test@gmail.com` lors d'actions de remédiation (blocage IP, start/stop de service).
+* **Alertes Automatisées** : envoi d'emails automatiques vers `ghita.tazi@etu.uae.ac.ma` lors d'actions de remédiation (blocage IP, start/stop de service).
 * **Génération de Rapports PDF** : exportation en un clic d'un rapport d'incident SOC récapitulant l'état du système.
 
 ---
@@ -81,7 +81,7 @@ Copiez `.env.example` en `.env` à la racine du projet et renseignez vos identif
 ```env
 EMAIL_SENDER="ghita.tazi2026@gmail.com"
 EMAIL_PASSWORD="mot_de_passe_application_16_caracteres"
-EMAIL_RECEIVER="ghita.soc.test@gmail.com"
+EMAIL_RECEIVER="ghita.tazi@etu.uae.ac.ma"
 ```
 
 `EMAIL_PASSWORD` doit être un **mot de passe d'application** Gmail (16 caractères, généré sur https://myaccount.google.com/apppasswords après activation de la validation en deux étapes). Le mot de passe habituel du compte est refusé par Gmail (`534 5.7.9 Application-specific password required`).

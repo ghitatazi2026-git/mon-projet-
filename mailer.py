@@ -28,7 +28,7 @@ load_dotenv()
 # CONFIGURATION EMAIL
 # ============================================================================
 DEFAULT_SENDER = "ghita.tazi2026@gmail.com"
-DEFAULT_RECEIVER = "ghita.soc.test@gmail.com"
+DEFAULT_RECEIVER = "ghita.tazi@etu.uae.ac.ma"
 
 
 def _clean(value):
