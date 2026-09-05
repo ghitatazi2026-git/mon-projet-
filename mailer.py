@@ -136,7 +136,7 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
     """
     if not SENDER_PASSWORD:
         print(
-            "❌ [MAILER] EMAIL_PASSWORD absent du .env : créez un mot de passe "
+            "[MAILER] EMAIL_PASSWORD absent du .env : créez un mot de passe "
             f"d'application Gmail (16 caractères) pour {SENDER_EMAIL} sur "
             "https://myaccount.google.com/apppasswords"
         )
@@ -146,7 +146,7 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
         msg = MIMEMultipart("alternative")
         msg['From'] = SENDER_EMAIL
         msg['To'] = RECEIVER_EMAIL
-        msg['Subject'] = f"🚨 ALERTE SOC {ticket_id} - {service_name}"
+        msg['Subject'] = f"[ALERTE SOC] Ticket {ticket_id} - {service_name}"
         
         # Attach plain text version
         plain_body = _build_soc_email_plain(
@@ -160,20 +160,20 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
         )
         msg.attach(MIMEText(html_body, 'html'))
         
-        print(f"🟢 [MAILER] Envoi de l'alerte {ticket_id} à {RECEIVER_EMAIL}...")
+        print(f"[MAILER] Envoi de l'alerte {ticket_id} à {RECEIVER_EMAIL}...")
         
         _send_message(msg)
         
-        print(f"✅ [MAILER SUCCÈS] Email envoyé à {RECEIVER_EMAIL}")
+        print(f"[MAILER] Email envoyé à {RECEIVER_EMAIL}")
         return True
         
     except smtplib.SMTPAuthenticationError as e:
         print(
-            f"❌ [MAILER ERREUR AUTH] Gmail refuse {SENDER_EMAIL} : {e}. "
+            f"[MAILER] Erreur d'authentification : Gmail refuse {SENDER_EMAIL} : {e}. "
             "Vérifiez que la validation en deux étapes est active et que "
             "EMAIL_PASSWORD est un mot de passe d'application, pas le mot de passe du compte."
         )
         return False
     except Exception as e:
-        print(f"❌ [MAILER ERREUR] {type(e).__name__}: {e}")
+        print(f"[MAILER] Erreur d'envoi - {type(e).__name__}: {e}")
         return False
