@@ -3,19 +3,45 @@ import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # python-dotenv absent : lecture manuelle du .env
+    def load_dotenv():
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        if not os.path.exists(env_path):
+            return False
+        with open(env_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        return True
 
 load_dotenv()
 
 # ============================================================================
 # CONFIGURATION EMAIL
 # ============================================================================
-SENDER_EMAIL = os.getenv("EMAIL_SENDER")
-SENDER_PASSWORD = os.getenv("EMAIL_PASSWORD")
-RECEIVER_EMAIL = os.getenv("EMAIL_RECEIVER", "ghita.soc.test@gmail.com")
+DEFAULT_SENDER = "ghita.tazi2026@gmail.com"
+DEFAULT_RECEIVER = "ghita.soc.test@gmail.com"
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 465
+
+def _clean(value):
+    return value.strip().strip('"').strip("'") if value else value
+
+
+SENDER_EMAIL = _clean(os.getenv("EMAIL_SENDER")) or DEFAULT_SENDER
+# Gmail affiche les mots de passe d'application par groupes de 4 : les espaces
+# doivent être retirés avant l'authentification SMTP.
+SENDER_PASSWORD = (_clean(os.getenv("EMAIL_PASSWORD")) or "").replace(" ", "")
+RECEIVER_EMAIL = _clean(os.getenv("EMAIL_RECEIVER")) or DEFAULT_RECEIVER
+
+SMTP_HOST = _clean(os.getenv("SMTP_HOST")) or "smtp.gmail.com"
+SMTP_PORT = int(os.getenv("SMTP_PORT") or 465)
+SMTP_TIMEOUT = 20
 
 
 def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee):
@@ -89,13 +115,31 @@ CGI IT Operations
     return body
 
 
+def _send_message(msg):
+    """Envoie le message en SSL (465) avec repli STARTTLS (587) si le port est bloqué."""
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, 465, timeout=SMTP_TIMEOUT) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        return
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as server:
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+
+
 def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, assignee):
     """
     Envoie un email d'alerte SOC via Gmail SMTP SSL.
     Appelé depuis app.py dans un thread de fond.
     """
-    if not SENDER_EMAIL or not SENDER_PASSWORD or not RECEIVER_EMAIL:
-        print("❌ [MAILER] Identifiants email manquants dans le .env")
+    if not SENDER_PASSWORD:
+        print(
+            "❌ [MAILER] EMAIL_PASSWORD absent du .env : créez un mot de passe "
+            f"d'application Gmail (16 caractères) pour {SENDER_EMAIL} sur "
+            "https://myaccount.google.com/apppasswords"
+        )
         return False
     
     try:
@@ -118,13 +162,18 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
         
         print(f"🟢 [MAILER] Envoi de l'alerte {ticket_id} à {RECEIVER_EMAIL}...")
         
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
+        _send_message(msg)
         
         print(f"✅ [MAILER SUCCÈS] Email envoyé à {RECEIVER_EMAIL}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(
+            f"❌ [MAILER ERREUR AUTH] Gmail refuse {SENDER_EMAIL} : {e}. "
+            "Vérifiez que la validation en deux étapes est active et que "
+            "EMAIL_PASSWORD est un mot de passe d'application, pas le mot de passe du compte."
+        )
+        return False
     except Exception as e:
-        print(f"❌ [MAILER ERREUR] {str(e)}")
+        print(f"❌ [MAILER ERREUR] {type(e).__name__}: {e}")
         return False

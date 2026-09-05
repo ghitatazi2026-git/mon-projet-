@@ -79,9 +79,18 @@ pip install -r requirements.txt
 **3. Configuration de l'environnement :**
 Vérifiez que votre fichier `.env` est correctement configuré à la racine du projet avec vos identifiants SMTP :
 ```env
-EMAIL_SENDER="votre_email_d_envoi@gmail.com"
-EMAIL_PASSWORD="votre_mot_de_passe_d_application"
+EMAIL_SENDER="ghita.tazi2026@gmail.com"
+EMAIL_PASSWORD="mot_de_passe_application_16_caracteres"
 EMAIL_RECEIVER="ghita.soc.test@gmail.com"
+```
+
+> `EMAIL_PASSWORD` doit être un **mot de passe d'application** Gmail (16 caractères,
+> généré sur https://myaccount.google.com/apppasswords après avoir activé la
+> validation en deux étapes) — le mot de passe habituel du compte est refusé par Gmail.
+
+Vérifiez la configuration avant de lancer le dashboard :
+```bash
+python test_email.py
 ```
 
 **4. Configuration de l'hôte Kali (SSH) :**
