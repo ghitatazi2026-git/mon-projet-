@@ -210,10 +210,11 @@ def notify_alert_by_email(alert_id, message):
         target=mailer.send_soc_alert_email,
         args=(
             alert_id,
-            f"Journal Kali ({LOG_FILE_PATH})",
+            f"Journal systeme ({LOG_FILE_PATH})",
             severity,
             message[:500],
             "Detection automatique",
+            f"Kali Linux ({KALI_IP})",
         ),
         daemon=True,
     ).start()

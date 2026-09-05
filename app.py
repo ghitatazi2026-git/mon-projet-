@@ -228,7 +228,14 @@ def log_and_notify_incident(service_name, status_message, action_taken):
     
     email_thread = threading.Thread(
         target=mailer.send_soc_alert_email,
-        args=(incident.id, service_name, status_message, action_taken, incident.assignee)
+        args=(
+            incident.id,
+            service_name,
+            status_message,
+            action_taken,
+            incident.assignee,
+            f"Kali Linux ({kali_ssh.KALI_IP})",
+        )
     )
     email_thread.start()
     

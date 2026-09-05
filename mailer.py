@@ -45,8 +45,11 @@ SMTP_HOST = _clean(os.getenv("SMTP_HOST")) or "smtp.gmail.com"
 SMTP_PORT = int(os.getenv("SMTP_PORT") or 465)
 SMTP_TIMEOUT = 20
 
+# Machine supervisee affichee dans les tickets, surchargeable via KALI_IP.
+DEFAULT_MACHINE = f"Kali Linux ({_clean(os.getenv('KALI_IP')) or '192.168.132.130'})"
 
-def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee):
+
+def _build_soc_email_body(ticket_id, service_name, status_message, action_taken, assignee, machine):
     """Construit le corps HTML de l'email d'alerte SOC."""
     timestamp = local_now().strftime("%d/%m/%Y %H:%M:%S")
     
@@ -66,6 +69,10 @@ def _build_soc_email_body(ticket_id, service_name, status_message, action_taken,
                 <tr>
                     <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Horodatage</td>
                     <td style="padding: 8px 0; color: #1A1A1A; border-top: 1px solid #F0F0F0;">{timestamp}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Machine / VM</td>
+                    <td style="padding: 8px 0; color: #1A1A1A; font-weight: 600; border-top: 1px solid #F0F0F0;">{machine}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #666666; border-top: 1px solid #F0F0F0;">Service Impacté</td>
@@ -96,7 +103,7 @@ def _build_soc_email_body(ticket_id, service_name, status_message, action_taken,
     return html
 
 
-def _build_soc_email_plain(ticket_id, service_name, status_message, action_taken, assignee):
+def _build_soc_email_plain(ticket_id, service_name, status_message, action_taken, assignee, machine):
     """Construit le corps texte brut de l'email d'alerte SOC."""
     timestamp = local_now().strftime("%d/%m/%Y %H:%M:%S")
     
@@ -105,6 +112,7 @@ def _build_soc_email_plain(ticket_id, service_name, status_message, action_taken
 
 Ticket ID     : {ticket_id}
 Horodatage    : {timestamp}
+Machine / VM  : {machine}
 Service       : {service_name}
 Statut        : {status_message}
 Detail        : {action_taken}
@@ -131,7 +139,7 @@ def _send_message(msg):
         server.send_message(msg)
 
 
-def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, assignee):
+def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, assignee, machine=None):
     """
     Envoie un email d'alerte SOC via Gmail SMTP SSL.
     Appelé depuis app.py dans un thread de fond.
@@ -149,7 +157,8 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
         msg['From'] = formataddr(("SOC Command Center", SENDER_EMAIL))
         msg['To'] = RECEIVER_EMAIL
         msg['Reply-To'] = SENDER_EMAIL
-        msg['Subject'] = f"[ALERTE SOC] Ticket {ticket_id} - {service_name}"
+        machine = machine or DEFAULT_MACHINE
+        msg['Subject'] = f"[ALERTE SOC] Ticket {ticket_id} - {service_name} - {status_message}"
         # En-tetes standards : sans Date ni Message-ID, Gmail classe le message en spam.
         msg['Date'] = formatdate(localtime=True)
         msg['Message-ID'] = make_msgid(domain=SENDER_EMAIL.split("@")[-1])
@@ -157,13 +166,13 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
         
         # Attach plain text version
         plain_body = _build_soc_email_plain(
-            ticket_id, service_name, status_message, action_taken, assignee
+            ticket_id, service_name, status_message, action_taken, assignee, machine
         )
         msg.attach(MIMEText(plain_body, 'plain'))
         
         # Attach HTML version
         html_body = _build_soc_email_body(
-            ticket_id, service_name, status_message, action_taken, assignee
+            ticket_id, service_name, status_message, action_taken, assignee, machine
         )
         msg.attach(MIMEText(html_body, 'html'))
         
