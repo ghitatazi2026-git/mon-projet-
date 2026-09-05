@@ -2,6 +2,7 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr, formatdate, make_msgid
 from datetime import datetime
 
 try:
@@ -144,9 +145,14 @@ def send_soc_alert_email(ticket_id, service_name, status_message, action_taken, 
     
     try:
         msg = MIMEMultipart("alternative")
-        msg['From'] = SENDER_EMAIL
+        msg['From'] = formataddr(("SOC Command Center", SENDER_EMAIL))
         msg['To'] = RECEIVER_EMAIL
+        msg['Reply-To'] = SENDER_EMAIL
         msg['Subject'] = f"[ALERTE SOC] Ticket {ticket_id} - {service_name}"
+        # En-tetes standards : sans Date ni Message-ID, Gmail classe le message en spam.
+        msg['Date'] = formatdate(localtime=True)
+        msg['Message-ID'] = make_msgid(domain=SENDER_EMAIL.split("@")[-1])
+        msg['Auto-Submitted'] = 'auto-generated'
         
         # Attach plain text version
         plain_body = _build_soc_email_plain(
