@@ -2,14 +2,6 @@
 
 Bienvenue dans le dépôt du **KALI SOC Command Center**, un tableau de bord (Dashboard) interactif développé en Python (Flask) et JavaScript (Chart.js) permettant de superviser en temps réel une machine Kali Linux, d'intervenir en cas d'incident et de générer des rapports.
 
-----Aperçu du Dashboard :
-
-![Aperçu du Dashboard](docs/screenshot_dashboard.png)
-*Vue principale du Dashboard avec les métriques en temps réel et les services.*
-
-![Active Defense & Logs](docs/screenshot_active_defense.png)
-*Défense active (Bannissement IP) et Terminal de Logs en direct.*
-
 ----Fonctionnalités Principales : 
 
 Télémétrie en Temps Réel : Graphiques dynamiques (CPU, RAM, Attaques/min) propulsés par Chart.js avec un design néon/rouge.
