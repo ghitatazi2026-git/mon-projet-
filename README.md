@@ -63,15 +63,10 @@ EMAIL_PASSWORD="egos psek lvhn gnqq"
 EMAIL_RECEIVER="ghita.tazi@etu.uae.ac.ma"
 ```
 
-4. Configuration de l'hôte Kali (SSH) :
-Dans le fichier `kali_ssh.py`, mettez à jour l'IP et les identifiants de votre machine Kali si nécessaire :
-```python
-KALI_IP = "192.168.132.10"
-KALI_USER = "r2schools"
-KALI_PASSWORD = "ghita"
+
 ```
 
-5. Lancer l'application :
+4. Lancer l'application :
 ```bash
 python app.py
 ```
